@@ -73,7 +73,7 @@ def impliedVol(opt, S, K, C, r, T, div = 0):
         
         origVol = vol
         
-        diffPrice = priceCall(S, K, r, T, vol) - C
+        diffPrice = (priceCall(S, K, r, T, vol) - C ) if (opt == 'c') else (pricePut(S, K, r, T, vol) - C )
         d1, d2 = d1d2(vol, S, K, r, T)
         
         vega = S * stats.norm.pdf(d1) * sqrt(T)
