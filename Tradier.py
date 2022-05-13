@@ -97,7 +97,7 @@ def optionChainFile(filePath, optExpiry, symbol = 'SPX', AuthToken = 'LXVkmzoytE
         
     response.close()
 
-    return str(len(json_response['options']['option'])) + ' lines written ' + datetime.now().strftime("%m/%d/%Y, %H:%M:%S")
+    return str(len(json_response['options']['option'])) + ' lines written ' + datetime.now().strftime("%d/%m/%Y, %H:%M:%S")
 
 def optionExpiries(AuthToken = 'LXVkmzoytEbdiNQc6gcmOkF1rMxH', symbol = 'SPX', url = sandboxurl):
     getUrl = url + 'markets/options/expirations'
