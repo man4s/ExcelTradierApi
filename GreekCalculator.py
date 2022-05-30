@@ -106,7 +106,7 @@ def optionChainGreeks(spot, strikes, optTypes, cntPrices, r, T , div, cntSize = 
         vegas.append(vega)
         thetas.append(theta)
         rhos.append(rho)
-        #greeks.append(bsgreeks)
+        
         """
         if K in retDic:
             if opt == 'p':
@@ -149,6 +149,118 @@ def optionChainGreeks(spot, strikes, optTypes, cntPrices, r, T , div, cntSize = 
     print(retData)
     return retData
     #return prices, optTypes, sigmas, deltas, gammas, vegas, thetas, rhos
+
+@xw.func
+@xw.arg('strikes', doc="Array of Strikes")
+@xw.arg('optTypes', doc="Array of option Types ie c or p")
+@xw.arg('cntPrices', doc="Array of implied vols")
+@xw.arg('r', doc="Risk Free Interest Rate")
+@xw.arg('T', doc="Time to Maturity in years")
+@xw.arg('div', doc="dividend yield of the underlying")
+@xw.arg('cntSize', doc="Contract Size of the option ie 100, 1000")
+@xw.arg('spotDevalue', doc="0 - 1 factor to devalue the spot price")
+@xw.arg('timeIncrease', doc="in years by which the current maturity to be increase")
+@xw.ret(index=False, expand='table')
+def optionChainScenarioGreeks(spot,
+                              strikes,
+                              optTypes,
+                              cntPrices,
+                              r,
+                              T ,
+                              div,
+                              cntSize = 100,
+                              spotDevalue = 0.2,
+                              timeIncrease = 60/365):
+    """
+    1. calculates price and greeks due to spot decrease
+    2. calculates price due to increase maturity
+    """
+
+    """
+    print(len(strikes))
+    print(len(optTypes))
+    print(len(cntPrices))
+    """
+    
+    if (len(strikes) != len(optTypes) or len(optTypes) != len(cntPrices)):
+        return "Please enter same lenght array for Stikes, Option Types and Option Prices"
+
+    sigmas = []
+    #calculate implied vols for all the options
+    for (K, opt, C) in zip(strikes, optTypes, cntPrices):
+        sigmas.append(bs.impliedVol(opt, spot, K, C, r, T, div))
+
+
+    #print(sigmas)
+    sSprices = []
+    sSdeltas = []
+    sSgammas = []
+    sSvegas  = []
+    sSthetas  = []
+    sSrhos = []
+    sTprices = []
+    retDic = { }
+    impliedFwdDic = { }
+    #calculate prices for all the options
+    for (K, opt, sigma) in zip(strikes, optTypes, sigmas):
+
+        sbsprice = 0
+        sdelta = 0
+        sgamma = 0
+        svega = 0
+        stheta = 0
+        srho = 0
+        tbsprice = 0
+        #scenario calculation
+        if (isinstance(sigma, (int, float))):
+            #spot up/down by spotDevalue
+            dspot = spot*(1.0-spotDevalue)
+            sbsprice = bs.price(opt, dspot, K, r, T, sigma, div)
+
+            #reusing values 
+            (sdelta, sgamma, svega, stheta, srho) = bs.getGreeks(opt, dspot, K, r, T, sigma, div, cntSize)
+            
+            #time value increase by timeIncrease
+            tbsprice = bs.price(opt, spot, K, r, T + timeIncrease, sigma, div)
+
+        sSprices.append(sbsprice)
+        sSdeltas.append(sdelta)
+        sSgammas.append(sgamma)
+        sSvegas.append(svega)
+        sSthetas.append(stheta)
+        sSrhos.append(srho)
+        sTprices.append(tbsprice)
+        
+        """
+        if K in retDic:
+            if opt == 'p':
+               retDic[K] = retDic[K].append([bsgreeks, sigma, bsprice, retDic[K]])
+            else:
+               retDic[K] = retDic[K].append([retDic[K], bsprice, sigma, bsgreeks]) 
+        else:
+            if opt == 'p':
+               retDic[K] = [bsgreeks, sigma, bsprice, K]
+            #retDic[K] = [bsgreeks, bsprice]
+            else:
+               retDic[K] = [K, bsprice, sigma, bsgreeks]
+        """
+        #retData.append(bsprice)
+        
+    #xw.Range('greeksPosition').value = "Scenarios calculated"
+    
+    deValueSpot = spot*(1.0-spotDevalue)
+    
+    #return str(len(strikes)) + ' lines written ' + datetime.now().strftime("%d/%m/%Y, %H:%M:%S")
+    retData = pd.DataFrame({ str(1- spotDevalue) + ' Spot Option Price' : sSprices,
+                             '(' + str(T + timeIncrease) + ' Year)  Option Price' : sTprices,
+                             str(1- spotDevalue) + ' Spot Delta'        : sSdeltas,
+                             str(1- spotDevalue) + ' Spot Gamma'        : sSgammas,
+                             str(1- spotDevalue) + ' Spot Vega'         : sSvegas,
+                             str(1- spotDevalue) + ' Spot Theta'        : sSthetas,
+                             str(1- spotDevalue) + ' Spot Rho'          : sSrhos     
+                           })
+    print(retData)
+    return retData
 
 
 #if __name__ == "__main__":
