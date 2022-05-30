@@ -1,0 +1,11 @@
+Setting up the scope of first delivery
+Items to deliver
+  Implied Forward calculation
+  Margin calculation (spot decreases by 20% scenario)
+  Setup butterfly structure for given delta
+  Implement trade execution via Tradier API
+  Implement eod feature in the sheet to save
+        EOD vols
+        Trading position
+        Historice option prices for various expiries
+  Calculation mean reversion and std for a given butterfly using bollinger bands
