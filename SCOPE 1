@@ -4,8 +4,9 @@ Items to deliver
   Margin calculation (spot decreases by 20% scenario)
   Setup butterfly structure for given delta
   Implement trade execution via Tradier API
+  Implement implied vol to maturity chart 
   Implement eod feature in the sheet to save
         EOD vols
         Trading position
         Historice option prices for various expiries
-  Calculation mean reversion and std for a given butterfly using bollinger bands
+  Calculation mean reversion, std dev and zscore for a given butterfly using bollinger bands
