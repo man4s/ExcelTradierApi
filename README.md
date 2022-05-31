@@ -16,5 +16,5 @@ Items to deliver
   Implement eod feature in the sheet to save
         EOD vols
         Trading position
-        Historice option prices for various expiries
-  Calculation mean reversion and std for a given butterfly using bollinger bands
+        Historical option prices for various butterflies for a given maturity
+  Calculation mean reversion, std dev and zscore for a given butterfly using SMA
