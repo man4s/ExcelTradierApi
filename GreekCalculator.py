@@ -3,23 +3,11 @@ import datetime as dt
 import blackscholes as bs
 import Tradier as TAPI
 import pandas as pd
+import TradingStrategies as ts
 
 from datetime import datetime
 
 today = dt.date.today()
-
-#test in python before exposing in excel
-def main():
-    #expiries = optionExpiries("MSFT")
-    #diff = map(str, map(maturity, expiries))
-    #print(list(diff))
-    wb = xw.Book.caller()
-    sheet = wb.sheets[0]
-    if sheet["A1"].value == "Hello xlwings!":
-        sheet["A1"].value = "Bye xlwings!"
-    else:
-        sheet["A1"].value = "Hello xlwings!"
-
 
 @xw.func
 def hello(name):
@@ -62,10 +50,36 @@ def spotPrice(Authcode, symbol, url):
     return TAPI.spotPrice(Authcode, symbol, url)
 
 @xw.func
+@xw.ret(expand='table')
+def createButterfly(optType,
+                    maturity,
+                    sym,
+                    deltas,
+                    lots,
+                    filepath):
+    deltas = list(map(lambda x:x/100, deltas))
+    fileName = filepath + sym + "_" + maturity + "_" + optType + ".csv"
+    return ts.butterfly(deltas, lots, fileName)
+                    
+@xw.func
 @xw.arg('strikes', doc="Array of Strikes")
 @xw.arg('optTypes', doc="Array of option Types ie c or p")
 @xw.ret(index=False, expand='table')
-def optionChainGreeks(spot, strikes, optTypes, cntPrices, r, T , div, cntSize = 100):
+def optionChainGreeks(spot,
+                      strikes,
+                      optTypes,
+                      cntPrices,
+                      r,
+                      T ,
+                      div,
+                      cntSize = 100,
+                      filePath = '',
+                      optMat = '',
+                      sym=''):
+    """
+    returns Option Prices and greeks for a given option chain
+    """
+
     """
     print(len(strikes))
     print(len(optTypes))
@@ -122,7 +136,6 @@ def optionChainGreeks(spot, strikes, optTypes, cntPrices, r, T , div, cntSize = 
         """
         #retData.append(bsprice)
         
-    #xw.Range('greeksPosition').value = "Implied Vol calculated"
     """          
     print(greeks)
     print(len(prices))
@@ -144,22 +157,23 @@ def optionChainGreeks(spot, strikes, optTypes, cntPrices, r, T , div, cntSize = 
                              'Gamma'        : gammas,
                              'Vega'         : vegas,
                              'Theta'        : thetas,
-                             'Rho'          : rhos
-                           })
+                             'Rho'          : rhos,
+                          })
     print(retData)
+
+
+    if (filePath != ''):
+        retData['Strikes'] = strikes
+        cleanData = retData[retData['Implied Vol'] != 'Calculation Error : Vega is Zero']
+        cleanData[cleanData['Option Type'] == 'p'].to_csv(filePath + sym + '_' + optMat + '_put.csv', index=False)
+        cleanData[cleanData['Option Type'] == 'c'].to_csv(filePath + sym + '_' + optMat + '_call.csv', index=False)
+        retData.drop(['Strikes'], axis= 1, inplace=True)   
+        
+     
     return retData
     #return prices, optTypes, sigmas, deltas, gammas, vegas, thetas, rhos
 
 @xw.func
-@xw.arg('strikes', doc="Array of Strikes")
-@xw.arg('optTypes', doc="Array of option Types ie c or p")
-@xw.arg('cntPrices', doc="Array of implied vols")
-@xw.arg('r', doc="Risk Free Interest Rate")
-@xw.arg('T', doc="Time to Maturity in years")
-@xw.arg('div', doc="dividend yield of the underlying")
-@xw.arg('cntSize', doc="Contract Size of the option ie 100, 1000")
-@xw.arg('spotDevalue', doc="0 - 1 factor to devalue the spot price")
-@xw.arg('timeIncrease', doc="in years by which the current maturity to be increase")
 @xw.ret(index=False, expand='table')
 def optionChainScenarioGreeks(spot,
                               strikes,
@@ -170,7 +184,7 @@ def optionChainScenarioGreeks(spot,
                               div,
                               cntSize = 100,
                               spotDevalue = 0.2,
-                              timeIncrease = 60/365):
+                              timeDecrease = 60/365):
     """
     1. calculates price and greeks due to spot decrease
     2. calculates price due to increase maturity
@@ -221,7 +235,7 @@ def optionChainScenarioGreeks(spot,
             (sdelta, sgamma, svega, stheta, srho) = bs.getGreeks(opt, dspot, K, r, T, sigma, div, cntSize)
             
             #time value increase by timeIncrease
-            tbsprice = bs.price(opt, spot, K, r, T + timeIncrease, sigma, div)
+            tbsprice = bs.price(opt, spot, K, r, (T - timeDecrease) if (T - timeDecrease) > 0.0 else 0.0, sigma, div)
 
         sSprices.append(sbsprice)
         sSdeltas.append(sdelta)
@@ -246,13 +260,13 @@ def optionChainScenarioGreeks(spot,
         """
         #retData.append(bsprice)
         
-    #xw.Range('greeksPosition').value = "Scenarios calculated"
-    
+
     deValueSpot = spot*(1.0-spotDevalue)
+    sixtyDaysAhead = dt.date.today() + dt.timedelta(timeDecrease*365)
     
     #return str(len(strikes)) + ' lines written ' + datetime.now().strftime("%d/%m/%Y, %H:%M:%S")
-    retData = pd.DataFrame({ str(1- spotDevalue) + ' Spot Option Price' : sSprices,
-                             '(' + str(T + timeIncrease) + ' Year)  Option Price' : sTprices,
+    retData = pd.DataFrame({ str(1- spotDevalue) + ' Spot Price' : sSprices,
+                             'Price at ' + str(sixtyDaysAhead)   : sTprices,
                              str(1- spotDevalue) + ' Spot Delta'        : sSdeltas,
                              str(1- spotDevalue) + ' Spot Gamma'        : sSgammas,
                              str(1- spotDevalue) + ' Spot Vega'         : sSvegas,
@@ -263,6 +277,3 @@ def optionChainScenarioGreeks(spot,
     return retData
 
 
-#if __name__ == "__main__":
-#    xw.Book("myproject.xlsm").set_mock_caller()
-#    main()

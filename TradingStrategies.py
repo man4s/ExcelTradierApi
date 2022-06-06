@@ -24,6 +24,22 @@ def butterfly(deltas, #3 deltas to be provided
     #extract the relevant rows
     df = df[df.Delta.isin(deltas)]
 
+    #add lots column to the fram
+    df["Lots"] = lots
+
+    df.index.name = "Leg"
+
+    #create a row based on the weighted sum of lots
+    df.loc["Butterfly"] = [ lots[0]*df.at[-1, 'Option Price'] + lots[1]*df.at[-2, 'Option Price'] + lots[2]*df.at[-3, 'Option Price'],
+                            lots[0]*df.at[-1, 'Implied Vol'] + lots[1]*df.at[-2, 'Implied Vol'] + lots[2]*df.at[-3, 'Implied Vol'],
+                            lots[0]*df.at[-1, 'Delta'] + lots[1]*df.at[-2, 'Delta'] + lots[2]*df.at[-3, 'Delta'],
+                            lots[0]*df.at[-1, 'Gamma'] + lots[1]*df.at[-2, 'Gamma'] + lots[2]*df.at[-3, 'Gamma'],
+                            lots[0]*df.at[-1, 'Vega'] + lots[1]*df.at[-2, 'Vega'] + lots[2]*df.at[-3, 'Vega'],
+                            lots[0]*df.at[-1, 'Theta'] + lots[1]*df.at[-2, 'Theta'] + lots[2]*df.at[-3, 'Theta'],
+                            lots[0]*df.at[-1, 'Rho'] + lots[1]*df.at[-2, 'Rho'] + lots[2]*df.at[-3, 'Rho'],
+                            lots[0]*df.at[-1, 'Strikes'] + lots[1]*df.at[-2, 'Strikes'] + lots[2]*df.at[-3, 'Strikes'],
+                            sum(lots) ]
+
     #save the file to be reused
     #pd.save_csv(file)
 
