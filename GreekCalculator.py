@@ -3,6 +3,8 @@ import datetime as dt
 import blackscholes as bs
 import Tradier as TAPI
 import pandas as pd
+import numpy as np
+import scipy as sp
 import TradingStrategies as ts
 
 from datetime import datetime
@@ -50,6 +52,27 @@ def spotPrice(Authcode, symbol, url):
     return TAPI.spotPrice(Authcode, symbol, url)
 
 @xw.func
+def getButterflyStats(optType,
+                    maturity,
+                    sym,
+                    deltas,
+                    filepath):
+    #read the butterfly prices for MA analysis
+    fileTM = filepath + "timeseries\\" + sym + "_" + maturity + "_" + optType + "-" + "-".join(map(str, deltas)) + ".txt"
+
+    data = open(fileTM, "r")
+    lines = [x for x in data.read().split("\n") if x]
+    data.close()
+
+    optPrices = [float(x) for x in lines]
+    npArray = np.asarray(optPrices)
+    mean = npArray.mean()
+    std = npArray.std()
+    zscore = zscore = sp.stats.zscore(npArray)[len(npArray)-1]
+
+    return [mean, std, zscore]
+        
+@xw.func
 @xw.ret(expand='table')
 def createButterfly(optType,
                     maturity,
@@ -57,9 +80,18 @@ def createButterfly(optType,
                     deltas,
                     lots,
                     filepath):
-    deltas = list(map(lambda x:x/100, deltas))
+
     fileName = filepath + sym + "_" + maturity + "_" + optType + ".csv"
-    return ts.butterfly(deltas, lots, fileName)
+    #save the butterfly price for MA analysis
+    fileTM = filepath + "timeseries\\" + sym + "_" + maturity + "_" + optType + "-" + "-".join(map(str, deltas)) + ".txt"
+
+    deltas = list(map(lambda x:x/100, deltas))
+    df = ts.butterfly(deltas, lots, fileName)
+    
+    with open(fileTM, 'a') as file1:
+        file1.write(str(df.iloc[3]['Option Price']/df.iloc[0]['Lots']) + "\n")
+
+    return df
                     
 @xw.func
 @xw.arg('strikes', doc="Array of Strikes")
