@@ -1,3 +1,9 @@
+# Author: Manas Bhatt
+# Contact: manas.bh4tt@gmail.com
+# Date : May 2022
+
+#python function exposed in excel
+
 import xlwings as xw
 import datetime as dt
 import blackscholes as bs
@@ -6,11 +12,15 @@ import pandas as pd
 import numpy as np
 import scipy as sp
 import TradingStrategies as ts
+import MarketData as md
 
 from datetime import datetime
 
 today = dt.date.today()
 
+def impliedVolGoalSeek(sigma, opt, spot, K, r, T, div, cntPrice):
+    return cntPrice - bs.price(opt, spot, K, r, T, sigma, div)
+    
 @xw.func
 def hello(name):
     return f"Hello {name}!"
@@ -19,6 +29,10 @@ def hello(name):
 def helloString(str):
     return "hello " + str
 
+@xw.func
+def moveMarketData(histFolder, dataFolder):
+    md.moveFiles(dataFolder, histFolder + str(today))
+    
 @xw.func
 def optionExpiries(Authcode, tickerStr, url):
      return TAPI.optionExpiries(Authcode, tickerStr, url)
@@ -60,8 +74,9 @@ def getButterflyStats(optType,
     #read the butterfly prices for MA analysis
     fileTM = filepath + "timeseries\\" + sym + "_" + maturity + "_" + optType + "-" + "-".join(map(str, deltas)) + ".txt"
 
+    #get last 20 values
     data = open(fileTM, "r")
-    lines = [x for x in data.read().split("\n") if x]
+    lines = [x for x in data.read().split("\n") if x][-20:]
     data.close()
 
     optPrices = [float(x) for x in lines]
@@ -117,15 +132,61 @@ def optionChainGreeks(spot,
     print(len(optTypes))
     print(len(cntPrices))
     """
+    if (isinstance(strikes, (int, float))):
+        return "Array of Strikes required. No Greek Calculated"
+    
+    if (len(strikes) == 0 or len(optTypes) == 0 or len(cntPrices) == 0):
+        return "Empty Strikes/Option Types/Cnt Prices  for Greek Calculation"
+    
     if (len(strikes) != len(optTypes) or len(optTypes) != len(cntPrices)):
         return "Please enter same lenght array for Stikes, Option Types and Option Prices"
 
     sigmas = []
+    tmpDF = pd.DataFrame({'Strikes' : strikes,
+                       'Option Type'  : optTypes,
+                       })
+
+    loc = 1.8
     #calculate implied vols for all the options
     for (K, opt, C) in zip(strikes, optTypes, cntPrices):
-        sigmas.append(bs.impliedVol(opt, spot, K, C, r, T, div))
-
+        try:
+            sigma = sp.optimize.newton(impliedVolGoalSeek, loc, args=(opt,spot, K, r,T, div, C))
+            sigmas.append(sigma)
+            loc = sigma
+        except:
+            sigmas.append(np.NaN)
+            print(f'unable to find implied vol for {opt} option of {K}')
+                
+    tmpDF['sigmas'] = sigmas
+    print(tmpDF)
+    
     #print(sigmas)
+    #pdSigmas = pd.Series(sigmas)
+
+    #interpolate
+    #pdSigmas.interpolate(method='polynomial', order=3, limit_direction='both', inplace=True)
+    #pdSigmas.interpolate(inplace=True)
+
+    #sigmas = pdSigmas.tolist()
+    #print(sigmas)
+
+        
+    #interpolate for any missing values for opttype
+    callDF = tmpDF[tmpDF['Option Type'] == 'c'].interpolate(method='spline', order=3, limit_direction='both')
+
+    print(callDF)
+    putDF = tmpDF[tmpDF['Option Type'] == 'p'].interpolate(method='spline', order=3, limit_direction='both')
+    
+    print(putDF)
+    
+    #merge and extract the vol from the DF
+    #tmpDF = tmpDF.merge(callDF, how='left', on=['Strikes', 'Option Type'])
+    #tmpDF = tmpDF.merge(putDF, how='left', on=['Strikes', 'Option Type'])
+    tmpDF.fillna(callDF, inplace=True)
+    tmpDF.fillna(putDF, inplace=True)
+    print(tmpDF)
+    sigmas = tmpDF['sigmas'].tolist()
+    
     prices = []
     deltas = []
     gammas = []
@@ -191,7 +252,7 @@ def optionChainGreeks(spot,
                              'Theta'        : thetas,
                              'Rho'          : rhos,
                           })
-    print(retData)
+    #print(retData)
 
 
     if (filePath != ''):
@@ -227,6 +288,12 @@ def optionChainScenarioGreeks(spot,
     print(len(optTypes))
     print(len(cntPrices))
     """
+
+    if (isinstance(strikes, (int, float))):
+        return "Array of Strikes required. No Greek Calculated"
+    
+    if (len(strikes) == 0 or len(optTypes) == 0 or len(cntPrices) == 0):
+        return "Empty Strikes/Option Types/Cnt Prices  for Greek Calculation"
     
     if (len(strikes) != len(optTypes) or len(optTypes) != len(cntPrices)):
         return "Please enter same lenght array for Stikes, Option Types and Option Prices"
@@ -305,7 +372,7 @@ def optionChainScenarioGreeks(spot,
                              str(1- spotDevalue) + ' Spot Theta'        : sSthetas,
                              str(1- spotDevalue) + ' Spot Rho'          : sSrhos     
                            })
-    print(retData)
+    #print(retData)
     return retData
 
 

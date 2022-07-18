@@ -1,3 +1,8 @@
+# Author: Manas Bhatt
+# Contact: manas.bh4tt@gmail.com
+# Date : Jun 2022
+
+#functions to implement trading strategies like butterfly
 import datetime as dt
 import blackscholes as bs
 import pandas as pd
@@ -44,3 +49,26 @@ def butterfly(deltas, #3 deltas to be provided
     #pd.save_csv(file)
 
     return df
+
+#data dict containing deltas, lots, filename
+def structure(optdatas):
+
+    df = pd.DataFrame()
+    
+    for optdata in optdatas:
+        (deltas, lots, file) = optdata
+
+        if len(deltas) != len(lots):
+            return f("Structure requires deltas and lots of same size for a given maturity")
+        
+        df.append(structureImpl(deltas, lots, file), ignore_index = True)
+
+    #summarize the data in dataframe
+    return df
+
+#combination of option type, delta and maturity
+def structureImpl(deltas,
+                  lots,
+                  file):
+    return
+
