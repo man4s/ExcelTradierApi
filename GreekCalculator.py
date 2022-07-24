@@ -85,7 +85,7 @@ def getButterflyStats(optType,
     std = npArray.std()
     zscore = zscore = sp.stats.zscore(npArray)[len(npArray)-1]
 
-    return [mean, std, zscore]
+    return [mean, std, zscore, len(npArray)]
         
 @xw.func
 @xw.ret(expand='table')
@@ -150,7 +150,8 @@ def optionChainGreeks(spot,
     #calculate implied vols for all the options
     for (K, opt, C) in zip(strikes, optTypes, cntPrices):
         try:
-            sigma = sp.optimize.newton(impliedVolGoalSeek, loc, args=(opt,spot, K, r,T, div, C))
+            #sigma = sp.optimize.newton(impliedVolGoalSeek, loc, args=(opt,spot, K, r,T, div, C))
+            sigma = sp.optimize.bisect(impliedVolGoalSeek, 10, 0.001, args=(opt,spot, K, r,T, div, C))
             sigmas.append(sigma)
             loc = sigma
         except:
@@ -299,12 +300,40 @@ def optionChainScenarioGreeks(spot,
         return "Please enter same lenght array for Stikes, Option Types and Option Prices"
 
     sigmas = []
+    tmpDF = pd.DataFrame({'Strikes' : strikes,
+                       'Option Type'  : optTypes,
+                       })
+
+    loc = 1.8
     #calculate implied vols for all the options
     for (K, opt, C) in zip(strikes, optTypes, cntPrices):
-        sigmas.append(bs.impliedVol(opt, spot, K, C, r, T, div))
+        try:
+            #sigma = sp.optimize.newton(impliedVolGoalSeek, loc, args=(opt,spot, K, r,T, div, C))
+            sigma = sp.optimize.bisect(impliedVolGoalSeek, 10, 0.001, args=(opt,spot, K, r,T, div, C))
+            sigmas.append(sigma)
+            loc = sigma
+        except:
+            sigmas.append(np.NaN)
+            print(f'unable to find implied vol for {opt} option of {K}')
+                
+    tmpDF['sigmas'] = sigmas
+    print(tmpDF)
+          
+    #interpolate for any missing values for opttype
+    callDF = tmpDF[tmpDF['Option Type'] == 'c'].interpolate(method='spline', order=3, limit_direction='both')
 
+    print(callDF)
+    putDF = tmpDF[tmpDF['Option Type'] == 'p'].interpolate(method='spline', order=3, limit_direction='both')
+    
+    print(putDF)
+    
+    #fillNA from call and put pd
+    tmpDF.fillna(callDF, inplace=True)
+    tmpDF.fillna(putDF, inplace=True)
+    print(tmpDF)
 
-    #print(sigmas)
+    sigmas = tmpDF['sigmas'].tolist()
+
     sSprices = []
     sSdeltas = []
     sSgammas = []
