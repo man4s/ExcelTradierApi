@@ -76,10 +76,10 @@ def getButterflyStats(optType,
 
     #get last 20 values
     data = open(fileTM, "r")
-    lines = [x for x in data.read().split("\n") if x][-20:]
+    lines = [x for x in data.read().split("\n") if x]
     data.close()
 
-    optPrices = [float(x) for x in lines]
+    optPrices = np.unique([float(x) for x in lines])[-20:]
     npArray = np.asarray(optPrices)
     mean = npArray.mean()
     std = npArray.std()
