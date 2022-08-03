@@ -13,6 +13,7 @@ import numpy as np
 import scipy as sp
 import TradingStrategies as ts
 import MarketData as md
+import Messaging as mg
 
 from datetime import datetime
 
@@ -20,14 +21,11 @@ today = dt.date.today()
 
 def impliedVolGoalSeek(sigma, opt, spot, K, r, T, div, cntPrice):
     return cntPrice - bs.price(opt, spot, K, r, T, sigma, div)
-    
-@xw.func
-def hello(name):
-    return f"Hello {name}!"
 
 @xw.func
-def helloString(str):
-    return "hello " + str
+def sendMessage(id, url, message):
+    return mg.sendWPMessage(id, url, "Price Alert", message)
+
 
 @xw.func
 def moveMarketData(histFolder, dataFolder):
