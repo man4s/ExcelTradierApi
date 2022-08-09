@@ -77,12 +77,15 @@ def getButterflyStats(optType,
     lines = [x for x in data.read().split("\n") if x]
     data.close()
 
-    optPrices = np.unique([float(x) for x in lines])[-20:]
+    optPrices = list(dict.fromkeys([float(x) for x in lines]))[-20:]
     npArray = np.asarray(optPrices)
     mean = npArray.mean()
     std = npArray.std()
-    zscore = zscore = sp.stats.zscore(npArray)[len(npArray)-1]
-
+    #zscore = zscore = sp.stats.zscore(npArray)[len(npArray)-1]
+    print(npArray[-1])
+    print(mean)
+    print(npArray[-1] - mean)
+    zscore = (npArray[-1] - mean) / std
     return [mean, std, zscore, len(npArray)]
         
 @xw.func
@@ -102,7 +105,7 @@ def createButterfly(optType,
     df = ts.butterfly(deltas, lots, fileName)
     
     with open(fileTM, 'a') as file1:
-        file1.write(str(df.iloc[3]['Option Price']/df.iloc[0]['Lots']) + "\n")
+        file1.write(str(df.iloc[4]['Option Price']/df.iloc[0]['Lots']) + "\n")
 
     return df
                     
